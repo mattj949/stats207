@@ -1,1 +1,3 @@
-# stats_207
+# stats207
+
+Requirements: https://stats207.github.io/project/
