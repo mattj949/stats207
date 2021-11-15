@@ -5,16 +5,18 @@ import torch.optim as optim
 
 
 torch.manual_seed(1)
-PRINT_INTERVAL = 1
+PRINT_INTERVAL = 50
 
 
 class CommodityLSTM(nn.Module):
 
     def __init__(self,
+                validation_dataloader,
                  lr: float = 0.001,
                  hidden_size = 2,
                  num_layers = 1,
-                 dropout = 0) -> None:
+                 dropout = 0,
+                 ) -> None:
         """LSTM constructor"""
         super(CommodityLSTM, self).__init__()
 
@@ -29,6 +31,14 @@ class CommodityLSTM(nn.Module):
         
 
         self._optimizer = torch.optim.Adam(self.parameters(), lr=self._lr)
+
+        for _, val_batch in enumerate(validation_dataloader):
+            # get validation loss 
+            self.X_val, self.y_val = val_batch
+            self.X_val = self.X_val.unsqueeze(-1).float()
+            self.y_val = self.y_val.float()
+            # TODO REMOVE validate on larger sample
+            break
 
     def forward(self, x):
         """Makes a forward pass through the network."""
@@ -60,20 +70,10 @@ class CommodityLSTM(nn.Module):
             training_losses.append(batch_loss)
 
             val_batch_loss = 0
-            for _, val_batch in enumerate(validation_dataloader):
-                # get validation loss 
-                X_val, y_val = val_batch
-                X_val = X_val.unsqueeze(-1).float()
-                y_val = y_val.float()
-
-                nn_output = self.forward(X_val)
-
-                mseloss = nn.MSELoss()
-                val_batch_loss += mseloss(nn_output, y_val)
-                # TODO REMOVE validate on larger sample
-                break
-
-            validation_losses.append(torch.mean(val_batch_loss))
+            nn_output_val = self.forward(self.X_val)
+            mseloss = nn.MSELoss()
+            val_batch_loss += mseloss(nn_output_val, self.y_val)
+            validation_losses.append(val_batch_loss)
         
             if i_step % PRINT_INTERVAL == 0:
                 print(f'TRAINING BATCH LOSS AT STEP {i_step}: {batch_loss}')
