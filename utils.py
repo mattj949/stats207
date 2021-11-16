@@ -1,16 +1,19 @@
 import pandas as pd
 
 # Define a helper function to process the data
-def process_data(df, label):
+def process_data(df, label, start_date, end_date):
     
     # Convert the Date column from a string to datetime format
     df['Date'] = pd.to_datetime(df['Date'])
     
     # We only want dates prior to this cutoff
-    df = df.loc[(df['Date'] <= '2021-11-01')]
+    df = df.loc[(df['Date'] <= end_date)]
     
     # We only want dates after this cutoff
-    df = df.loc[(df['Date'] >= '1980-01-01')]
+    df = df.loc[(df['Date'] >= start_date)]
+    
+    # Reset Index
+    df.reset_index(inplace=True, drop=True)
     
     # Carries forward old prices, so we aren't using future information
     df.fillna(method = 'ffill', inplace=True) 
@@ -24,7 +27,7 @@ def process_data(df, label):
     
     return df
 
-def slice_datasets(data, start_date, end_date):
+def slice_dataset(data, start_date, end_date):
 
     # Get the indices of the start date and the end date
     start_index = int(np.where(data[:,0] == pd.to_datetime(start_date))[0])
