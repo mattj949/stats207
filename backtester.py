@@ -89,6 +89,8 @@ def backtest_log(predicted_log_ret, actual_log_ret):
 
     strategy_returns = []
     long_only_returns = []
+    strategy_predictors = []
+    correctdirections = []
 
     for i in range(len(actual_log_ret)):
         # Scale by minmax of previous realized log returns
@@ -96,17 +98,19 @@ def backtest_log(predicted_log_ret, actual_log_ret):
         min_max_scaler = preprocessing.MinMaxScaler()
         # up to and including current predicted return - better the more data you have
         # squishes signals into 0, 1 range
-        v_scaled = min_max_scaler.fit_transform(predicted_log_ret[:i+1])
 
-        scaling = v_scaled[-1]
-        assert(0 <= scaling <= 1)
+        if i == 0:
+            scaling = 1
+        else:
+            lookback = np.abs(predicted_log_ret[max(0, i - 20):i+1])
+            v_scaled = min_max_scaler.fit_transform(lookback.reshape(-1, 1))
+            scaling = v_scaled[-1]
+        assert(0 <= scaling <= 1.01)
 
         # multiply by the original direction of the signal
         scaling = float(scaling*np.sign(predicted_log_ret[i]))
-
-
-        # random direction
-        rand_dir = np.random.choice([-1, 1], size=1)
+        strategy_predictors.append(scaling)
+        correctdirections.append(int(np.sign(predicted_log_ret[i]) == np.sign(actual_log_ret[i])))
 
         strategy_returns.append(scaling * actual_log_ret[i])
         long_only_returns.append(actual_log_ret[i])
@@ -120,8 +124,9 @@ def backtest_log(predicted_log_ret, actual_log_ret):
     # psuedo sharpe
     print("Long only annualized psuedo sharpe: ", np.mean(long_only_returns)/np.std(long_only_returns)*np.sqrt(252))
     print("Strategy annualized psuedo sharpe: ", np.mean(strategy_returns)/np.std(strategy_returns)*np.sqrt(252))
-    print("Correlation matrix between long only and strategy returns")
-    print(np.corrcoef(strategy_returns, long_only_returns))
+    print("Correlation matrix between strategy predictors and returns")
+    print(np.corrcoef(strategy_predictors, long_only_returns))
+    print("Percent of time predicted direction correctly: ", np.sum(correctdirections)/len(correctdirections)* 100)
 
     plt.figure(figsize=(18,9))
     plt.plot(list_strategy_portfolio_values)
@@ -136,3 +141,5 @@ def backtest_log(predicted_log_ret, actual_log_ret):
     plt.title("Actual vs. Predicted")
     plt.legend(["Predicted Log Return", "Actual Log Return"])
     plt.show()
+
+    return strategy_returns, long_only_returns, strategy_predictors

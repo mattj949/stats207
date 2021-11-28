@@ -69,15 +69,15 @@ class CommodityLSTM(nn.Module):
 
             training_losses.append(batch_loss)
 
-            val_batch_loss = 0
-            nn_output_val = self.forward(self.X_val)
-            mseloss = nn.MSELoss()
-            val_batch_loss += mseloss(nn_output_val, self.y_val)
-            validation_losses.append(val_batch_loss)
+            # val_batch_loss = 0
+            # nn_output_val = self.forward(self.X_val)
+            # mseloss = nn.MSELoss()
+            # val_batch_loss += mseloss(nn_output_val, self.y_val)
+            # validation_losses.append(val_batch_loss)
         
             if i_step % PRINT_INTERVAL == 0:
                 print(f'TRAINING BATCH LOSS AT STEP {i_step}: {batch_loss}')
-                print(f'VALIDATION BATCH LOSS AT STEP {i_step}: {val_batch_loss}')
+                # print(f'VALIDATION BATCH LOSS AT STEP {i_step}: {val_batch_loss}')
 
         return training_losses, validation_losses
 
