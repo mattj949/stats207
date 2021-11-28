@@ -11,15 +11,20 @@ import numpy as np
 # price_series[i] should be the actual price on day i
 def backtest(forecast_for_each_day, price_series):
     
+    # Previous observations to use in calculating moving average price in refrence momentum strategy
+    # I used 8 since I provided weekly data - 8 units = 8 weeks = ~2 months.
+    REFERENCE_LOOKBACK = 8
+    
+    
     strategy_portfolio_value = 1
-    long_only_portfolio_value = 1
+    reference_portfolio_value = 1
     list_strategy_portfolio_values = []
-    list_long_only_portfolio_values = []
+    list_reference_portfolio_values = []
     
     # Scale our holding size by the inverse of the asset's price volatility
     pd_series = pd.Series(price_series)
     vol = pd_series.pct_change().std()
-    scaling = 0.05/vol # Target 5% volatility
+    scaling = 0.15/vol # Target 15% volatility
 
 
     list_of_weights = []
@@ -36,31 +41,32 @@ def backtest(forecast_for_each_day, price_series):
             long_short = -1
         
         list_of_weights += [long_short]
-
-        # print("Predicted price change: ")
-        # print("   " + str(forecast_for_each_day[i] - price_series[i-1]))
-        # print("Actual price change:")
-        # print("   " + str(price_series[i] - price_series[i-1]))
-
-
-        # add smoothing
-        asset_return = ((price_series[i] - price_series[i-1]) / (price_series[i-1]))
+    
+    
+        moving_average = np.average(price_series[max(0,i-REFERENCE_LOOKBACK):i])
+        
+        if moving_average >= price_series[i-1]: 
+            reference_long_short = 1
+        else:
+            reference_long_short = -1
+        
+        asset_return = ((price_series[i] - price_series[i-1]) / price_series[i-1])
         
         scaled_strategy_return = long_short * scaling * asset_return
-        scaled_long_only_return = scaling * asset_return
+        scaled_reference_return = reference_long_short * scaling * asset_return
         
         strategy_portfolio_value = strategy_portfolio_value * (1+scaled_strategy_return)
-        long_only_portfolio_value = long_only_portfolio_value * (1+scaled_long_only_return)
+        reference_portfolio_value = reference_portfolio_value * (1+scaled_reference_return)
         
         list_strategy_portfolio_values += [strategy_portfolio_value]
-        list_long_only_portfolio_values += [long_only_portfolio_value]
+        list_reference_portfolio_values += [reference_portfolio_value]
         
 
     plt.figure(figsize=(18,9))
+    plt.plot(list_reference_portfolio_values)
     plt.plot(list_strategy_portfolio_values)
-    plt.plot(list_long_only_portfolio_values)
-    plt.title("Backtest vs. long only")
-    plt.legend(["Strategy return", "Long-Only Return"])
+    plt.title("Reference Strategy vs. ARIMA-based Strategy")
+    plt.legend(["Reference Strategy", "ARIMA Strategy"])
     plt.show()
     
 
@@ -70,6 +76,8 @@ def backtest(forecast_for_each_day, price_series):
     plt.plot(np.asarray(list_of_weights) / 5)
     plt.legend(["Forecast - actual", "Long or Short"])
     plt.show()
+
+    return list_strategy_portfolio_values, list_reference_portfolio_values
 
 def backtest_log(predicted_log_ret, actual_log_ret):
     
