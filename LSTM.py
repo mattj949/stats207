@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
+import numpy as np
 
 torch.manual_seed(1)
 PRINT_INTERVAL = 50
@@ -83,6 +83,7 @@ class CommodityLSTM(nn.Module):
 
     def test(self, test_dataloader):
         predictions = []
+        actuals = []
         losses = []
         for i_step, batch in enumerate(test_dataloader):
             X, y = batch
@@ -95,4 +96,7 @@ class CommodityLSTM(nn.Module):
             batch_loss = mseloss(nn_output, y)
             losses.append(batch_loss)
             predictions.append(nn_output)
-        return predictions, losses
+            actuals.append(y)
+        predictions = np.concatenate([prediction.detach().numpy() for prediction in predictions])
+        actuals = np.concatenate([actual[0].detach().numpy() for actual in actuals])
+        return predictions, losses, actuals

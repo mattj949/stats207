@@ -4,11 +4,34 @@ import numpy as np
 import torch
 from torch.utils.data import dataset, dataloader, SequentialSampler
 
-import utils
 from functools import reduce
 import pandas as pd
 
 from typing import List
+
+# Define a helper function to process the data
+def process_data(df, label):
+    
+    # Convert the Date column from a string to datetime format
+    df['Date'] = pd.to_datetime(df['Date'])
+    
+    # We only want dates prior to this cutoff
+    df = df.loc[(df['Date'] <= '2021-11-01')]
+    
+    # We only want dates after this cutoff
+    df = df.loc[(df['Date'] >= '1980-01-01')]
+    
+    # Carries forward old prices, so we aren't using future information
+    df.fillna(method = 'ffill', inplace=True) 
+    
+    # Drop the 'Ticker' column
+    df = df.drop(columns = ['Ticker'], axis=1)
+    
+    # Rename the 'Close' column with the passed label
+    df = df.rename(columns={'Close': label})
+    #df = df.drop(columns = 'Close')
+    
+    return df
 
 class CommoditiesDataSet(dataset.Dataset):
     """DataSet Loader for commodities GFD data"""
@@ -21,7 +44,7 @@ class CommoditiesDataSet(dataset.Dataset):
 
         # read csvs and combine into single dataframe
         read_csv = pd.read_csv(f'data/{commodity}.csv', header = 2)
-        self.data = utils.process_data(read_csv, 'close_price')
+        self.data = process_data(read_csv, 'close_price')
         self.data = self.data.sort_values(by='Date', ascending=True).reset_index(drop=True)
 
         # convert to log returns
@@ -42,14 +65,14 @@ class CommoditiesDataSet(dataset.Dataset):
 
         else:
             raise ValueError()
-        self.data = self.data['log_return'].to_numpy()
+        self.log_return = self.data['log_return'].to_numpy()
 
 
     def __len__(self):
         """Return the total number of samples in the dataset."""  
 
         # adjust by sequence length     
-        return len(self.data) - self.seq_length + 1
+        return len(self.log_return) - self.seq_length + 1
 
     def __getitem__(self, index: int) -> np.ndarray:
         """
@@ -58,8 +81,8 @@ class CommoditiesDataSet(dataset.Dataset):
         and corresponding label is the next day's return.
         """
 
-        X = torch.tensor(self.data[index : index + self.seq_length], dtype = torch.double)
-        y = torch.tensor(self.data[index + self.seq_length: index + self.seq_length + 1], dtype = torch.double)
+        X = torch.tensor(self.log_return[index : index + self.seq_length], dtype = torch.double)
+        y = torch.tensor(self.log_return[index + self.seq_length: index + self.seq_length + 1], dtype = torch.double)
 
         return X, y
 

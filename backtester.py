@@ -24,7 +24,7 @@ def backtest(forecast_for_each_day, price_series):
 
     list_of_weights = []
 
-    print(scaling)
+    print("Scaling: ", scaling)
     
     for i in range(1, len(price_series)):
         # Look back a day and see whether we went long or short the asset
@@ -43,8 +43,8 @@ def backtest(forecast_for_each_day, price_series):
         # print("   " + str(price_series[i] - price_series[i-1]))
 
 
-
-        asset_return = ((price_series[i] - price_series[i-1]) / price_series[i-1])
+        # add smoothing
+        asset_return = ((price_series[i] - price_series[i-1]) / (price_series[i-1]))
         
         scaled_strategy_return = long_short * scaling * asset_return
         scaled_long_only_return = scaling * asset_return
@@ -69,4 +69,62 @@ def backtest(forecast_for_each_day, price_series):
     plt.plot(np.asarray(forecast_for_each_day) - np.asarray(price_series))
     plt.plot(np.asarray(list_of_weights) / 5)
     plt.legend(["Forecast - actual", "Long or Short"])
+    plt.show()
+
+def backtest_log(predicted_log_ret, actual_log_ret):
+    
+    strategy_portfolio_value = 1
+    long_only_portfolio_value = 1
+
+    list_strategy_portfolio_values = []
+    list_long_only_portfolio_values = []
+
+    strategy_returns = []
+    long_only_returns = []
+
+    for i in range(len(actual_log_ret)):
+        # Scale by minmax of previous realized log returns
+        from sklearn import preprocessing
+        min_max_scaler = preprocessing.MinMaxScaler()
+        # up to and including current predicted return - better the more data you have
+        # squishes signals into 0, 1 range
+        v_scaled = min_max_scaler.fit_transform(predicted_log_ret[:i+1])
+
+        scaling = v_scaled[-1]
+        assert(0 <= scaling <= 1)
+
+        # multiply by the original direction of the signal
+        scaling = float(scaling*np.sign(predicted_log_ret[i]))
+
+
+        # random direction
+        rand_dir = np.random.choice([-1, 1], size=1)
+
+        strategy_returns.append(scaling * actual_log_ret[i])
+        long_only_returns.append(actual_log_ret[i])
+
+        strategy_portfolio_value = strategy_portfolio_value * np.exp(scaling*actual_log_ret[i])
+        long_only_portfolio_value = long_only_portfolio_value * np.exp(actual_log_ret[i])
+        
+        list_strategy_portfolio_values += [strategy_portfolio_value]
+        list_long_only_portfolio_values += [long_only_portfolio_value]
+    
+    # psuedo sharpe
+    print("Long only annualized psuedo sharpe: ", np.mean(long_only_returns)/np.std(long_only_returns)*np.sqrt(252))
+    print("Strategy annualized psuedo sharpe: ", np.mean(strategy_returns)/np.std(strategy_returns)*np.sqrt(252))
+    print("Correlation matrix between long only and strategy returns")
+    print(np.corrcoef(strategy_returns, long_only_returns))
+
+    plt.figure(figsize=(18,9))
+    plt.plot(list_strategy_portfolio_values)
+    plt.plot(list_long_only_portfolio_values)
+    plt.title("Model Strategy vs. Long Only Strategy")
+    plt.legend(["Strategy return", "Long-Only Return"])
+    plt.show()
+
+    plt.figure(figsize=(18,9))
+    plt.plot(predicted_log_ret)
+    plt.plot(actual_log_ret)
+    plt.title("Actual vs. Predicted")
+    plt.legend(["Predicted Log Return", "Actual Log Return"])
     plt.show()
