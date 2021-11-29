@@ -168,10 +168,14 @@ def get_dataloader(commodity, seq_length, split, batch_size):
         )
 def get_dataloader_exog(filepath, seq_length, split, batch_size, pxcol = 'Close/Last', exog = ['Volume'], dateformat = '%m/%d/%Y'):
     dataset = CommoditiesExogenousDataSet(filepath, seq_length, split, pxcol = pxcol, exog = exog, dateformat=dateformat)
+    if split == "train":
+        sampler=RandomSampler(dataset)
+    else:
+        sampler = SequentialSampler(dataset)
     return dataloader.DataLoader(
             dataset=dataset,
             batch_size=batch_size,
-            sampler=RandomSampler(dataset),
+            sampler=sampler,
             num_workers=2,
             pin_memory=torch.cuda.is_available(),
             drop_last=True,
