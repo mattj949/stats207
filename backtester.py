@@ -92,31 +92,36 @@ def backtest_log(predicted_log_ret, actual_log_ret):
     strategy_predictors = []
     correctdirections = []
 
-    for i in range(len(actual_log_ret)):
+    for i in range(min(len(actual_log_ret), len(predicted_log_ret))):
         # Scale by minmax of previous realized log returns
         from sklearn import preprocessing
-        min_max_scaler = preprocessing.MinMaxScaler()
+        min_max_scaler = preprocessing.MinMaxScaler(feature_range = (0, 1))
         # up to and including current predicted return - better the more data you have
         # squishes signals into 0, 1 range
 
-        if i == 0:
-            scaling = 1
-        else:
-            lookback = np.abs(predicted_log_ret[max(0, i - 20):i+1])
-            v_scaled = min_max_scaler.fit_transform(lookback.reshape(-1, 1))
-            scaling = v_scaled[-1]
-        assert(0 <= scaling <= 1.01)
+        # if i == 0:
+        #     scaling = 1
+        # else:
+        #     lookback = np.abs(predicted_log_ret[max(0, i - 20):i+1])
+        #     v_scaled = min_max_scaler.fit_transform(lookback.reshape(-1, 1))
+        #     scaling = v_scaled[-1]
+        # assert(0 <= scaling <= 1.01)
+        # scaling = float(scaling*np.sign(predicted_log_ret[i]))
 
-        # multiply by the original direction of the signal
-        scaling = float(scaling*np.sign(predicted_log_ret[i]))
-        strategy_predictors.append(scaling)
+        #strategy_predictors.append(scaling)
+        strategy_predictors.append(predicted_log_ret[i])
         correctdirections.append(int(np.sign(predicted_log_ret[i]) == np.sign(actual_log_ret[i])))
 
-        strategy_returns.append(scaling * actual_log_ret[i])
+        #strategy_returns.append(scaling * actual_log_ret[i])
+        strategy_returns.append(predicted_log_ret[i]*actual_log_ret[i])
+
         long_only_returns.append(actual_log_ret[i])
 
-        strategy_portfolio_value = strategy_portfolio_value * np.exp(scaling*actual_log_ret[i])
-        long_only_portfolio_value = long_only_portfolio_value * np.exp(actual_log_ret[i])
+
+        #strategy_portfolio_value = strategy_portfolio_value * np.exp(scaling*actual_log_ret[i])
+        strategy_portfolio_value = strategy_portfolio_value * np.exp(strategy_returns[-1])
+
+        long_only_portfolio_value = long_only_portfolio_value * np.exp(long_only_returns[-1])
         
         list_strategy_portfolio_values += [strategy_portfolio_value]
         list_long_only_portfolio_values += [long_only_portfolio_value]
@@ -126,13 +131,21 @@ def backtest_log(predicted_log_ret, actual_log_ret):
     print("Strategy annualized psuedo sharpe: ", np.mean(strategy_returns)/np.std(strategy_returns)*np.sqrt(252))
     print("Correlation matrix between strategy predictors and returns")
     print(np.corrcoef(strategy_predictors, long_only_returns))
+    print("Avg. Portfolio Allocation, ", np.mean(np.abs(strategy_predictors)))
+
     print("Percent of time predicted direction correctly: ", np.sum(correctdirections)/len(correctdirections)* 100)
+    print("Percent of time long: ", np.sum(actual_log_ret > 0)/len(correctdirections)*100)
 
     plt.figure(figsize=(18,9))
-    plt.plot(list_strategy_portfolio_values)
-    plt.plot(list_long_only_portfolio_values)
-    plt.title("Model Strategy vs. Long Only Strategy")
+    plt.plot(np.cumsum(np.array(strategy_returns)))
+    #plt.plot(np.cumsum(np.array(long_only_returns)))
+    plt.title("Model Strategy Returns")
     plt.legend(["Strategy return", "Long-Only Return"])
+    plt.show()
+
+    plt.figure(figsize=(18,9))
+    plt.plot(strategy_predictors)
+    plt.title("Signals")
     plt.show()
 
     plt.figure(figsize=(18,9))
