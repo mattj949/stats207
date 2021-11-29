@@ -52,8 +52,6 @@ class CommodityLSTM(nn.Module):
         nn_out, (h_out, _) = self.LSTM_l1(x)
         prediction = self.linear(nn_out[:, -1, :])
 
-        # get sign
-        #sign = self.sig_layer(prediction)
         
         return prediction
 
@@ -67,12 +65,12 @@ class CommodityLSTM(nn.Module):
                 self._optimizer.zero_grad()
 
                 X, y = batch
-                if self.num_features == 1:
+                if self.num_features == 0:
                     X = X.unsqueeze(-1).float()
                 else:
                     X = X.float()
                 y = y.unsqueeze(-1).float()
-                
+            
 
                 nn_output = self.forward(X)
 
@@ -108,7 +106,7 @@ class CommodityLSTM(nn.Module):
         losses = []
         for i_step, batch in enumerate(test_dataloader):
             X, y = batch
-            if self.num_features == 1:
+            if self.num_features == 0:
                 X = X.unsqueeze(-1).float()
             else:
                 X = X.float()

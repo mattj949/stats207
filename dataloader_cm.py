@@ -68,9 +68,8 @@ class CommoditiesExogenousDataSet(dataset.Dataset):
 
         else:
             raise ValueError()
-
-        self.log_return = self.data[['log_return'] + exog].to_numpy()
         
+        self.log_return = self.data[['log_return'] + exog].to_numpy()
 
 
     def __len__(self):
@@ -89,8 +88,12 @@ class CommoditiesExogenousDataSet(dataset.Dataset):
         X = torch.tensor(self.log_return[index : index + self.seq_length], dtype = torch.double)
         mean = self.alldata[index + self.seq_length].mean(axis = 0)
         std = self.alldata[index + self.seq_length].std(axis = 0)
+        if std == 0:
+            # don't normalize
+            X = X
+        else:
         # normalization of X by training set mean and std dev
-        X = (X - mean) / std
+            X = (X - mean) / std
         y = torch.tensor(self.log_return[index + self.seq_length: index + self.seq_length + 1, 0], dtype = torch.double)
         y = torch.cat(((torch.sign(y) == 1.0).to(float), y))
         
