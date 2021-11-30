@@ -23,6 +23,7 @@ class CommodityLSTM(nn.Module):
         super(CommodityLSTM, self).__init__()
 
         self._lr = lr
+        torch.manual_seed(12)
         #self.bnorm1 = nn.BatchNorm1d(num_features)
         self.LSTM_l1 = nn.LSTM(input_size = num_features,
                                 hidden_size = hidden_size,
@@ -79,9 +80,8 @@ class CommodityLSTM(nn.Module):
                 #print(nn_output, y)
                 
                 batch_loss = mseloss(nn_output, y[:, 1, :])
-                #classification_loss = bceloss(nn_output, y[:, 0 , :])
-                totalloss = batch_loss 
-                #+ classification_loss
+                classification_loss = bceloss(nn_output, y[:, 0 , :])
+                totalloss = batch_loss + classification_loss
                 totalloss.backward()
                 self._optimizer.step()
 
@@ -118,9 +118,8 @@ class CommodityLSTM(nn.Module):
             #print(nn_output, y)
             
             batch_loss = mseloss(nn_output, y[:, 1, :])
-            #classification_loss = bceloss(nn_output, y[:, 0 , :])
-            totalloss = batch_loss 
-            #+ classification_loss
+            classification_loss = bceloss(nn_output, y[:, 0 , :])
+            totalloss = batch_loss + classification_loss
             # nn_output = self.forward(X)
 
             # mseloss = nn.MSELoss()
