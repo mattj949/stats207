@@ -9,7 +9,44 @@ import numpy as np
 # forecast[i] should be the forecast for the price on day i, as of day i-1
 # --> "Yesterday's forecast for today"
 # price_series[i] should be the actual price on day i
-def backtest(forecast_for_each_day, price_series):
+def backtest(forecast_for_each_day, price_series, reference_series):
+    
+    
+    sim = pd.Series(forecast_for_each_day)
+    true = pd.Series(price_series)
+
+    sim_pct = sim.pct_change()
+    true_pct = true.pct_change()
+
+    total = len(price_series)
+    
+    num_correct = 0
+    for i in range(total):
+        if sim_pct[i] > 0 and true_pct[i] > 0:
+            num_correct += 1
+        elif sim_pct[i] < 0 and true_pct[i] < 0:
+            num_correct += 1
+
+    print("Percentage of time our forecast was correct: " + str(num_correct / total))
+    
+    
+    
+    
+    sim = pd.Series(reference_series)
+    true = pd.Series(price_series)
+
+    sim_pct = sim.pct_change()
+    true_pct = true.pct_change()
+    
+    num_correct = 0
+    for i in range(total):
+        if sim_pct[i] > 0 and true_pct[i] > 0:
+            num_correct += 1
+        elif sim_pct[i] < 0 and true_pct[i] < 0:
+            num_correct += 1
+
+    print("Percentage of time reference forecast was correct: " + str(num_correct / total))
+    
     
     # Previous observations to use in calculating moving average price in refrence momentum strategy
     # I used 8 since I provided weekly data - 8 units = 8 weeks = ~2 months.
@@ -24,11 +61,13 @@ def backtest(forecast_for_each_day, price_series):
     # Scale our holding size by the inverse of the asset's price volatility
     pd_series = pd.Series(price_series)
     vol = pd_series.pct_change().std()
-    scaling = 0.15/vol # Target 15% volatility
+    scaling = 0.05/vol # Target 15% volatility
 
 
     list_of_weights = []
-
+    list_of_strategy_returns = []
+    list_of_reference_returns = []
+    
     print("Scaling: ", scaling)
     
     for i in range(1, len(price_series)):
@@ -55,12 +94,19 @@ def backtest(forecast_for_each_day, price_series):
         scaled_strategy_return = long_short * scaling * asset_return
         scaled_reference_return = reference_long_short * scaling * asset_return
         
+        list_of_strategy_returns += [scaled_strategy_return]
+        list_of_reference_returns += [scaled_reference_return]
+        
         strategy_portfolio_value = strategy_portfolio_value * (1+scaled_strategy_return)
         reference_portfolio_value = reference_portfolio_value * (1+scaled_reference_return)
         
         list_strategy_portfolio_values += [strategy_portfolio_value]
         list_reference_portfolio_values += [reference_portfolio_value]
         
+        
+    print("Strategy Sharpe: " + str((np.mean(list_of_strategy_returns) / np.std(list_of_strategy_returns)) * np.sqrt(252)))
+    print("Reference Sharpe: " + str((np.mean(list_of_reference_returns) / np.std(list_of_reference_returns)) * np.sqrt(252)))
+          
 
     plt.figure(figsize=(18,9))
     plt.plot(list_reference_portfolio_values)
